@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar Widget</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .calendar-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .month-label {
+    font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #111111;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    line-height: 1;
+    display: flex;
+    align-items: stretch;
+    writing-mode: horizontal-tb;
+    font-size: 46px;
+    align-self: stretch;
+  }
+
+  .month-svg {
+    display: block;
+    height: 100%;
+  }
+
+  .calendar-strip {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0;
+    overflow: visible;
+    padding: 4px 0;
+    flex: 1;
+    align-self: flex-end;
+  }
+
+  .day-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .day-label {
+    font-size: 9px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #b0b0b0;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .day-number {
+    width: min(28px, 100%);
+    aspect-ratio: 1;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #b0b0b0;
+    font-weight: 700;
+    border-radius: 50%;
+    line-height: 1;
+    transition: background 0.15s;
+  }
+
+  .day-cell.today .day-number {
+    background: #e8192c;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .day-cell.today .day-label {
+    color: #e8192c;
+    font-weight: 800;
+    position: relative;
+    top: -1px;
+  }
+</style>
+</head>
+<body>
+<div class="calendar-wrap">
+  <div class="month-label" id="monthLabel"></div>
+  <div class="calendar-strip" id="calendarStrip"></div>
+</div>
+
+<script>
+  function renderCalendar() {
+    const strip = document.getElementById('calendarStrip');
+    const monthEl = document.getElementById('monthLabel');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.getDate();
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dayAbbrs = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const dayAbbrs3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthAbbrs = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    const monthText = monthAbbrs[month];
+
+    strip.innerHTML = '';
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
+      const dow = date.getDay();
+      const isToday = d === today;
+
+      const cell = document.createElement('div');
+      cell.className = 'day-cell' + (isToday ? ' today' : '');
+
+      const label = document.createElement('div');
+      label.className = 'day-label';
+      label.textContent = isToday ? dayAbbrs3[dow] : dayAbbrs[dow];
+
+      const num = document.createElement('div');
+      num.className = 'day-number';
+      num.textContent = d;
+
+      cell.appendChild(label);
+      cell.appendChild(num);
+      strip.appendChild(cell);
+    }
+
+    // Measure widget height after render, then size SVG text to fit exactly
+    requestAnimationFrame(() => {
+      const h = strip.offsetHeight || 46;
+      // Build SVG with text scaled to fill height
+      monthEl.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" height="${h}" style="display:block;overflow:visible">
+          <text
+            y="${h * 0.80}"
+            font-family="'Barlow Condensed', 'Arial Narrow', sans-serif"
+            font-weight="800"
+            font-size="${h}px"
+            fill="#111111"
+            letter-spacing="1"
+            dominant-baseline="auto"
+            text-anchor="start"
+          >${monthText}</text>
+        </svg>`;
+
+      // Now shrink SVG width to fit text tightly
+      const textEl = monthEl.querySelector('text');
+      const bbox = textEl.getBBox();
+      const svgEl = monthEl.querySelector('svg');
+      svgEl.setAttribute('width', Math.ceil(bbox.width + 2));
+    });
+  }
+
+  // Wait for font to load before rendering
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(renderCalendar);
+  } else {
+    renderCalendar();
+  }
+</script>
+</body>
+</html>
