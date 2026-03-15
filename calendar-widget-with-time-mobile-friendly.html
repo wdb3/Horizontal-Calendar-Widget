@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar Widget</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .calendar-wrap {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+  }
+
+  .labels-svg {
+    flex-shrink: 0;
+    align-self: flex-end;
+    display: block;
+    line-height: 0;
+  }
+
+  .calendar-strip {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 0;
+    overflow: visible;
+    padding: 4px 0;
+    flex: 1;
+    align-self: flex-end;
+    margin-left: 7px;
+  }
+
+  .day-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .day-label {
+    font-size: 9px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #b0b0b0;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .day-number {
+    width: min(28px, 100%);
+    aspect-ratio: 1;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    color: #b0b0b0;
+    font-weight: 700;
+    border-radius: 50%;
+    line-height: 1;
+    transition: background 0.15s;
+  }
+
+  .day-cell.today .day-number {
+    background: #e8192c;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .day-cell.today .day-label {
+    color: #e8192c;
+    font-weight: 800;
+    position: relative;
+    top: -1px;
+  }
+
+</style>
+</head>
+<body>
+<div class="calendar-wrap">
+  <div class="labels-svg" id="labelsSvg"></div>
+  <div class="calendar-strip" id="calendarStrip"></div>
+</div>
+
+<script>
+  function getTimeText() {
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes}`;
+  }
+
+  function renderLabels(monthText, h) {
+    const el = document.getElementById('labelsSvg');
+    // Render a temporary SVG to measure both texts
+    el.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" height="${h}" style="display:block;overflow:visible">
+        <text id="svgTime"
+          x="0" y="${h * 0.80}"
+          font-family="'Barlow Condensed', 'Arial Narrow', sans-serif"
+          font-weight="800" font-size="${h}px"
+          fill="#111111" letter-spacing="1"
+          dominant-baseline="auto" text-anchor="start"
+        >${getTimeText()}</text>
+        <text id="svgMonth"
+          x="0" y="${h * 0.80}"
+          font-family="'Barlow Condensed', 'Arial Narrow', sans-serif"
+          font-weight="800" font-size="${h}px"
+          fill="#111111" letter-spacing="1"
+          dominant-baseline="auto" text-anchor="start"
+        >${monthText}</text>
+      </svg>`;
+
+    const svgEl = el.querySelector('svg');
+    const timeText = el.querySelector('#svgTime');
+    const monthTextEl = el.querySelector('#svgMonth');
+
+    const timeBbox = timeText.getBBox();
+    const monthBbox = monthTextEl.getBBox();
+
+    const gap = 15; // gap between time and month
+    const monthX = timeBbox.width + gap;
+    monthTextEl.setAttribute('x', monthX);
+
+    const totalWidth = monthX + monthBbox.width + 2;
+    svgEl.setAttribute('width', Math.ceil(totalWidth));
+  }
+
+  function updateTimeText() {
+    const timeEl = document.getElementById('labelsSvg');
+    const textEl = timeEl && timeEl.querySelector('#svgTime');
+    if (!textEl) return;
+    textEl.textContent = getTimeText();
+    // Reposition month after time width may have changed
+    const monthTextEl = timeEl.querySelector('#svgMonth');
+    if (!monthTextEl) return;
+    const timeBbox = textEl.getBBox();
+    const gap = 15;
+    const monthX = timeBbox.width + gap;
+    monthTextEl.setAttribute('x', monthX);
+    const monthBbox = monthTextEl.getBBox();
+    const svgEl = timeEl.querySelector('svg');
+    svgEl.setAttribute('width', Math.ceil(monthX + monthBbox.width + 2));
+  }
+
+  function buildStrip(strip, startDay, daysToShow, daysInMonth, today, dayAbbrs, dayAbbrs3, month, year) {
+    strip.innerHTML = '';
+    for (let d = startDay; d < startDay + daysToShow; d++) {
+      const date = new Date(year, month, d);
+      const dow = date.getDay();
+      const isToday = d === today;
+
+      const cell = document.createElement('div');
+      cell.className = 'day-cell' + (isToday ? ' today' : '');
+
+      const label = document.createElement('div');
+      label.className = 'day-label';
+      label.textContent = isToday ? dayAbbrs3[dow] : dayAbbrs[dow];
+
+      const num = document.createElement('div');
+      num.className = 'day-number';
+      num.textContent = d;
+
+      cell.appendChild(label);
+      cell.appendChild(num);
+      strip.appendChild(cell);
+    }
+  }
+
+  function getCenteredStart(today, daysToShow, daysInMonth) {
+    let start = today - Math.floor(daysToShow / 2);
+    if (start < 1) start = 1;
+    if (start + daysToShow - 1 > daysInMonth) start = daysInMonth - daysToShow + 1;
+    return start;
+  }
+
+  function checkAndReflow(monthAbbrs, month) {
+    const strip = document.getElementById('calendarStrip');
+    const labelsEl = document.getElementById('labelsSvg');
+    const wrap = document.querySelector('.calendar-wrap');
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const today = now.getDate();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dayAbbrs = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const dayAbbrs3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const wrapWidth = wrap.getBoundingClientRect().width;
+    const labelsWidth = labelsEl.getBoundingClientRect().width;
+    const margins = 2; // calendar-strip margin-left
+    const stripWidth = wrapWidth - labelsWidth - margins;
+
+    const cellWidth = 28;
+    const minFullWidth = daysInMonth * cellWidth;
+    const triggerWidth = minFullWidth * 0.65;
+    const currentCount = strip.querySelectorAll('.day-cell').length;
+
+    if (stripWidth < triggerWidth && currentCount !== 10) {
+      const start = getCenteredStart(today, 10, daysInMonth);
+      buildStrip(strip, start, 10, daysInMonth, today, dayAbbrs, dayAbbrs3, month, year);
+    } else if (stripWidth >= triggerWidth && currentCount !== daysInMonth) {
+      buildStrip(strip, 1, daysInMonth, daysInMonth, today, dayAbbrs, dayAbbrs3, month, year);
+    }
+  }
+
+  function renderCalendar() {
+    const strip = document.getElementById('calendarStrip');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const today = now.getDate();
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const dayAbbrs = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+    const dayAbbrs3 = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const monthAbbrs = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+    buildStrip(strip, 1, daysInMonth, daysInMonth, today, dayAbbrs, dayAbbrs3, month, year);
+
+    requestAnimationFrame(() => {
+      const h = strip.offsetHeight || 46;
+      renderLabels(monthAbbrs[month], h);
+      requestAnimationFrame(() => checkAndReflow(monthAbbrs, month));
+    });
+
+    setInterval(updateTimeText, 1000);
+
+    window.addEventListener('resize', () => {
+      requestAnimationFrame(() => {
+        checkAndReflow(monthAbbrs, month);
+      });
+    });
+  }
+
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(renderCalendar);
+  } else {
+    renderCalendar();
+  }
+</script>
+</body>
+</html>
